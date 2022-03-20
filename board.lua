@@ -1,4 +1,3 @@
-local Card = require 'card'
 local Board = Class{}
 
 ---comment
@@ -9,8 +8,8 @@ function Board:init(x, y, width, height)
     self.spaces = {}
     self.width = width
     self.height = height
-    self.card = false
-    -- self.free = true
+    self.card = nil
+    self.hand = nil
 end
 
 function Board:isPointInside(point)
@@ -27,7 +26,7 @@ function Board:draw()
     local x, y = self.pos:unpack()
     local color = { 1, 1, 1, 1 }
 
-    if Card.holding and IsPointInsideRect({x, y, x+self.width, y+self.height}, {mx, my}) then
+    if self.hand and self.hand.holding and IsPointInsideRect({x, y, x+self.width, y+self.height}, {mx, my}) then
         color = { 0.5, 1, 0.5, 1 }
     end
 

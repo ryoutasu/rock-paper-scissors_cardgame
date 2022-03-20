@@ -10,20 +10,22 @@ local card_height = 150
 ---Hand of a cards
 ---@param x number center
 ---@param y number bottom
-function Hand:init(x, y, board)
+function Hand:init(x, y, board, maxCards)
     self.pos = Vector(x, y)
     self.cards = {}
-    self.maxCards = 10
+    self.maxCards = maxCards or 10
     self.clickTime = 0
+    board.hand = self
     self.board = board
     self.index = 0
+    self.holding = nil
 end
 
 function Hand:addCard(card)
-    if not Card.holding then
+    if not self.holding then
         if self.index < self.maxCards then
             self.index = self.index + 1
-            card = card or Card(self.board, card_width, card_height)
+            card = card or Card(self, self.board, card_width, card_height)
             if not card.board then card.board = self.board end
             card:setText(N)
             self.cards[#self.cards+1] = card
@@ -74,13 +76,12 @@ function Hand:removeCard()
 end
 
 function Hand:release(x, y)
-    for i, v in ipairs(self.cards) do
-        if v:isHeld() then
-            if v:release(x, y) then
-                self.board.card = v
-                self.index = self.index - 1
-                self:rearrange()
-            end
+    local card = self.holding
+    if card then
+        if card:release(x, y) then
+            self.board.card = card
+            self.index = self.index - 1
+            self:rearrange()
         end
     end
 end
@@ -89,7 +90,7 @@ function Hand:update(dt)
     for i, v in ipairs(self.cards) do
         v:update(dt)
     end
-    if Card.holding then
+    if self.holding then
         self.clickTime = self.clickTime + dt
     end
 end
@@ -106,11 +107,11 @@ end
 
 function Hand:mousepressed( x, y, button, istouch, presses )
     if button == 1 then
-        if Card.holding then
+        if self.holding then
             self:release(x, y)
         else
             for i, v in ipairs(self.cards) do
-                if (v:isPointInside({x, y})) and not v.locked then
+                if (v:isPointInside({x, y})) and not v:isState('ON_BOARD') then
                     v:hold(true)
                     self.clickTime = 0
                     return
@@ -122,7 +123,7 @@ end
 
 function Hand:mousereleased( x, y, button, istouch, presses )
     if button == 1 then
-        if Card.holding
+        if self.holding
         and self.clickTime > holdTime then
             self:release(x, y)
         end

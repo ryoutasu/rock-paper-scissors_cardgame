@@ -1,7 +1,4 @@
 local Card = Class{}
-Card.holding = false
-
-local offset_x = 10
 
 local riseHeight = 30
 
@@ -9,41 +6,27 @@ local STATE = {
     IN_HAND = 1,
     HOLD = 2,
     ON_BOARD = 3,
-    MOVING = 4
 }
 
-function Card:init(board, width, height)
+function Card:init(hand, board, width, height)
     self.pos = Vector(600, 400)
     self.offset = Vector(0, 0)
     self.hold_point = Vector(0, 0)
     self.width = width
     self.height = height
+    self.hand = hand
     self.board = board
     self.text = ''
     self.state = STATE.IN_HAND
-    self.locked = false
+    self.moving = false
 end
-
--- function Card:setPosition(pos)
---     if self.state == STATE.IN_HAND then
---         self.position = pos
-
---         local p = pos-1
---         self.pos.x = self.hand_point.x + (self.width*p) + (offset_x*p)
---         self.pos.y = self.hand_point.y - self.height
---     end
--- end
 
 function Card:setText(text)
     self.text = text
 end
 
-function Card:isHeld()
-    return self.state == STATE.HOLD
-end
-
-function Card:isOnBoard()
-    return self.state == STATE.ON_BOARD or self.nextState == STATE.ON_BOARD
+function Card:isState(state)
+    return self.state == STATE[state]
 end
 
 function Card:hold(doHold)
@@ -56,21 +39,14 @@ function Card:hold(doHold)
         self.offset = Vector(0, 0)
         self.state = STATE.IN_HAND
     end
-    Card.holding = doHold
+    self.hand.holding = self
 end
 
 function Card:release(x, y)
     local board = self.board
     if not board.card and board:isPointInside({x, y}) then
-        -- self.state = STATE.MOVING
-        -- self.nextState = STATE.ON_BOARD
-
-        -- local pos = self.pos + self.offset
-        -- self.pos = CenterOf(board)-Vector(self.width/2,self.height/2)
-        -- self.offset = pos - self.pos
         self:moveTo(CenterOf(board)-Vector(self.width/2,self.height/2), 'ON_BOARD')
 
-        self.locked = true
         board.card = self
         return true
     else
@@ -80,15 +56,15 @@ function Card:release(x, y)
 end
 
 function Card:moveTo(newPos, nextState)
-    self.state = STATE.MOVING
-    self.nextState = STATE[nextState]
+    self.moving = true
+    self.state = STATE[nextState]
 
     if newPos then
         local pos = self.pos + self.offset
         self.pos = newPos
         self.offset = pos - self.pos
     end
-    Card.holding = false
+    self.hand.holding = nil
 end
 
 function Card:isPointInside(point)
@@ -110,22 +86,24 @@ function Card:update(dt)
     local mx, my = love.mouse.getPosition()
     local mouseOver = self:isPointInside({mx, my})
 
-    if self.state == STATE.IN_HAND then
-        if mouseOver and not Card.holding then
-            self.offset.y = math.lerp(self.offset.y, -riseHeight, 0.1)
-        else
-            self.offset.y = math.lerp(self.offset.y, 0, 0.1)
-        end
-    elseif self.state == STATE.HOLD then
-        self.offset = Vector(mx, my) + self.hold_point - self.pos
-    elseif self.state == STATE.MOVING then
+    if mouseOver and not self.hand.holding and not self:isState('ON_BOARD') then
+        self.offset.y = math.lerp(self.offset.y, -riseHeight, 0.1)
+    else
+        self.offset.y = math.lerp(self.offset.y, 0, 0.1)
+    end
+
+    if self.moving then
         self.offset.x = math.lerp(self.offset.x, 0, 0.1)
         self.offset.y = math.lerp(self.offset.y, 0, 0.1)
 
-        if self.offset:len() < 1 then
+        if self.offset:len() < 0.5 then
             self.offset = Vector(0, 0)
-            self.state = self.nextState
+            self.moving = false
         end
+    end
+
+    if self.state == STATE.HOLD then
+        self.offset = Vector(mx, my) + self.hold_point - self.pos
     end
 end
 
@@ -135,10 +113,12 @@ function Card:draw()
     local mouseOver = self:isPointInside({mx, my})
 
     local color = { 1, 1, 1, 1 }
-    if (mouseOver and self.state == STATE.IN_HAND and not Card.holding) then
-        color = { 0.2, 0.2, 1, 1 }
-    elseif self.state == STATE.HOLD then
+    if self:isState('HOLD') then
         color = { 0.6, 0.6, 1, 1 }
+    elseif self:isState('ON_BOARD') then
+        color = { 0.7, 0.4, 0.4, 1 }
+    elseif (mouseOver and not self.hand.holding) then
+        color = { 0.2, 0.2, 1, 1 }
     end
 
     love.graphics.setColor(color)
