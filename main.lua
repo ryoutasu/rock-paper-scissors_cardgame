@@ -9,12 +9,14 @@ STATE_GAME = require 'game'
 STATE_MENU = require 'menu'
 
 PLAYER = {
-    setName = function(player, name)
-        PLAYER[player].name = name
-        -- PLAYER[name] = player
-    end,
     host = {},
-    peer = {}
+    peer = {},
+    setName = function(player, name, id)
+        PLAYER[player] = { name = name, id = id }
+        PLAYER[id] = player
+    end,
+    getHost = function() return PLAYER['host'] end,
+    getPeer = function() return PLAYER['peer'] end
 }
 
 local time = 0

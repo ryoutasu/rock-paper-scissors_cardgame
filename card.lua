@@ -8,7 +8,8 @@ local STATE = {
     ON_BOARD = 3,
 }
 
-function Card:init(hand, board, width, height)
+function Card:init(hand, id, board, width, height, owner)
+    self.id = id
     self.pos = Vector(600, 400)
     self.offset = Vector(0, 0)
     self.hold_point = Vector(0, 0)
@@ -19,6 +20,7 @@ function Card:init(hand, board, width, height)
     self.text = ''
     self.state = STATE.IN_HAND
     self.moving = false
+    self.owner = owner
 end
 
 function Card:setText(text)
@@ -45,9 +47,8 @@ end
 function Card:release(x, y)
     local board = self.board
     if not board.card and board:isPointInside({x, y}) then
-        self:moveTo(CenterOf(board)-Vector(self.width/2,self.height/2), 'ON_BOARD')
-
-        board.card = self
+        self:play()
+        Connection:send('playcard', tostring(self.id))
         return true
     else
         self:moveTo(nil, 'IN_HAND')
@@ -67,6 +68,15 @@ function Card:moveTo(newPos, nextState)
     self.hand.holding = nil
 end
 
+function Card:play()
+    local hand = self.hand
+    self:moveTo(CenterOf(self.board)-Vector(self.width/2,self.height/2), 'ON_BOARD')
+    self.board.card = self
+
+    hand.index = hand.index - 1
+    hand:rearrange()
+end
+
 function Card:isPointInside(point)
     local rect = { self.pos.x, self.pos.y, self.pos.x+self.width, self.pos.y+self.height }
 
@@ -84,12 +94,14 @@ end
 
 function Card:update(dt)
     local mx, my = love.mouse.getPosition()
-    local mouseOver = self:isPointInside({mx, my})
-
-    if mouseOver and not self.hand.holding and not self:isState('ON_BOARD') then
-        self.offset.y = math.lerp(self.offset.y, -riseHeight, 0.1)
-    else
-        self.offset.y = math.lerp(self.offset.y, 0, 0.1)
+    if self.owner == PLAYER:getHost() then
+        local mouseOver = self:isPointInside({mx, my})
+        
+        if mouseOver and not self.hand.holding and not self:isState('ON_BOARD') then
+            self.offset.y = math.lerp(self.offset.y, -riseHeight, 0.1)
+        else
+            self.offset.y = math.lerp(self.offset.y, 0, 0.1)
+        end
     end
 
     if self.moving then
@@ -117,7 +129,7 @@ function Card:draw()
         color = { 0.6, 0.6, 1, 1 }
     elseif self:isState('ON_BOARD') then
         color = { 0.7, 0.4, 0.4, 1 }
-    elseif (mouseOver and not self.hand.holding) then
+    elseif mouseOver and self.owner == PLAYER:getHost() and not self.hand.holding then
         color = { 0.2, 0.2, 1, 1 }
     end
 
@@ -125,7 +137,7 @@ function Card:draw()
     love.graphics.rectangle('line', x, y, self.width, self.height)
 
     love.graphics.setColor(1, 1, 1, 1)
-    love.graphics.print(self.text, x+5, y+5)
+    love.graphics.print(self.id, x+5, y+5)
     love.graphics.print(self.state, x+5, y+20)
 end
 

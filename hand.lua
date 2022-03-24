@@ -1,7 +1,7 @@
 local Card = require 'card'
 local Hand = Class{}
 
-local N = 1
+local ID = 1
 local holdTime = 0.1
 local offset_x = 10
 local card_width = 100
@@ -10,7 +10,7 @@ local card_height = 150
 ---Hand of a cards
 ---@param x number center
 ---@param y number bottom
-function Hand:init(x, y, board, maxCards)
+function Hand:init(x, y, board, maxCards, player)
     self.pos = Vector(x, y)
     self.cards = {}
     self.maxCards = maxCards or 10
@@ -19,20 +19,29 @@ function Hand:init(x, y, board, maxCards)
     self.board = board
     self.index = 0
     self.holding = nil
+    self.owner = player
+    -- self.id = 1
 end
 
 function Hand:addCard(card)
     if not self.holding then
         if self.index < self.maxCards then
-            self.index = self.index + 1
-            card = card or Card(self, self.board, card_width, card_height)
-            if not card.board then card.board = self.board end
-            card:setText(N)
-            self.cards[#self.cards+1] = card
-            self.cards[card] = #self.cards
-            self:rearrange()
-            
-            N = N + 1
+            -- if self.owner.id == 1 then
+                
+                self.index = self.index + 1
+                local owner = self.owner
+                card = card or Card(self, ID, self.board, card_width, card_height, owner)
+                if not card.board then card.board = self.board end
+                -- card:setText(INDEX)
+                self.cards[#self.cards+1] = card
+                self.cards[card] = #self.cards
+                self:rearrange()
+                
+                ID = ID + 1
+                -- self.id = self.id + 1
+            -- else
+                -- Connection:send('addcard')
+            -- end
         end
     end
 end
@@ -75,13 +84,20 @@ function Hand:removeCard()
     end
 end
 
+function Hand:getCardByID(id)
+    for i, card in ipairs(self.cards) do
+        if card.id == id then
+            return card
+        end
+    end
+    return nil
+end
+
 function Hand:release(x, y)
     local card = self.holding
     if card then
         if card:release(x, y) then
-            self.board.card = card
-            self.index = self.index - 1
-            self:rearrange()
+            
         end
     end
 end
@@ -107,14 +123,16 @@ end
 
 function Hand:mousepressed( x, y, button, istouch, presses )
     if button == 1 then
-        if self.holding then
-            self:release(x, y)
-        else
-            for i, v in ipairs(self.cards) do
-                if (v:isPointInside({x, y})) and not v:isState('ON_BOARD') then
-                    v:hold(true)
-                    self.clickTime = 0
-                    return
+        if self.owner == PLAYER:getHost() then
+            if self.holding then
+                self:release(x, y)
+            else
+                for i, v in ipairs(self.cards) do
+                    if (v:isPointInside({x, y})) and not v:isState('ON_BOARD') then
+                        v:hold(true)
+                        self.clickTime = 0
+                        return
+                    end
                 end
             end
         end
@@ -123,9 +141,11 @@ end
 
 function Hand:mousereleased( x, y, button, istouch, presses )
     if button == 1 then
-        if self.holding
-        and self.clickTime > holdTime then
-            self:release(x, y)
+        if self.owner == PLAYER:getHost() then
+            if self.holding
+            and self.clickTime > holdTime then
+                self:release(x, y)
+            end
         end
     end
 end

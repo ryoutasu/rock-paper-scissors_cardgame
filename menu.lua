@@ -63,7 +63,7 @@ function Menu:init()
         Connection:createHost('*', portName.text)
         infoText.text = 'Game hosted'
         disable_control()
-        PLAYER.setName('host', playerName.text)
+        PLAYER.setName('host', playerName.text, 1)
     end)
 
     connectBtn = Urutora.button({
@@ -74,7 +74,7 @@ function Menu:init()
         Connection:connect(ipName.text, portName.text)
         infoText.text = 'Connecting to host...'
         disable_control()
-        PLAYER.setName('host', playerName.text)
+        PLAYER.setName('host', playerName.text, 2)
     end)
 
     cancelBtn = Urutora.button({
@@ -100,16 +100,18 @@ end
 
 function Menu:gameReady()
     cancelBtn:deactivate()
-    infoText.text = 'Player '..PLAYER.peer.name..' connected.'
-    readyBtn = Urutora.button({
-        text = 'Start game',
-        x = 500, y = 375,
-        w = 200, h = 50
-    }):action(function(e)
+    -- infoText.text = 'Player '..PLAYER.peer.name..' connected.'
+    -- readyBtn = Urutora.button({
+    --     text = 'Start game',
+    --     x = 500, y = 375,
+    --     w = 200, h = 50
+    -- }):action(function(e)
 
-    end)
+    -- end)
 
-    u:add(readyBtn)
+    -- u:add(readyBtn)
+
+    Gamestate.switch(STATE_GAME)
 end
 
 function Menu:update(dt) u:update(dt) end
